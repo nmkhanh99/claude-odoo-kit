@@ -1,7 +1,7 @@
 # Protect User Files Rule
 
 ## Activation
-- Always (áp dụng toàn bộ thời gian, mọi thao tác file)
+- Always On
 
 ## Rules
 
