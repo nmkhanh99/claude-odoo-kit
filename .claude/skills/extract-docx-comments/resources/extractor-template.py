@@ -160,9 +160,13 @@ for para, source in _iter_all_paragraphs():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 5. COMMENT MAP  (commentRangeStart → đoạn văn)
+# 5. COMMENT MAP + ANCHORED TEXT
 # ══════════════════════════════════════════════════════════════════════════════
+# comment_map: cid → (source_type, paragraph_text)
+# comment_anchor: cid → text bị comment (phần được chọn trong Word)
+
 comment_map = {}
+comment_anchor = {}  # ← MỚI: text cụ thể bị comment, không phải cả đoạn văn
 
 for para, source in _iter_all_paragraphs():
     xml_str = para._element.xml
@@ -171,6 +175,49 @@ for para, source in _iter_all_paragraphs():
     ids = re.findall(r'commentRangeStart[^>]+w:id="(\d+)"', xml_str)
     for cid in ids:
         comment_map[cid] = (source, para.text)
+
+
+def _extract_anchored_text(doc_xml_bytes: bytes) -> dict:
+    """
+    Trả về dict: comment_id (str) → text được anchor (phần văn bản bị comment).
+    Dùng commentRangeStart / commentRangeEnd để xác định phạm vi chính xác.
+    Bỏ qua w:delText để không lẫn text bị xóa vào anchor.
+    """
+    root = ET.fromstring(doc_xml_bytes)
+    W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    W_TAG = f"{{{W_NS}}}"
+    collecting: dict[str, list[str]] = {}
+    anchors: dict[str, str] = {}
+
+    def _walk(elem, in_del: bool = False):
+        tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+        if tag == "commentRangeStart":
+            cid = elem.get(f"{W_TAG}id")
+            if cid:
+                collecting[cid] = []
+        elif tag == "commentRangeEnd":
+            cid = elem.get(f"{W_TAG}id")
+            if cid in collecting:
+                anchors[cid] = "".join(collecting.pop(cid)).strip()
+        elif tag == "del":
+            # Các con của w:del là w:delText — bỏ qua để không lẫn text xóa
+            for child in elem:
+                _walk(child, in_del=True)
+            return
+        elif tag == "t" and not in_del:
+            text = elem.text or ""
+            for cid in list(collecting.keys()):
+                collecting[cid].append(text)
+        for child in elem:
+            _walk(child, in_del)
+
+    _walk(root)
+    return anchors
+
+
+with zipfile.ZipFile(DOCX_PATH) as z:
+    if "word/document.xml" in z.namelist():
+        comment_anchor = _extract_anchored_text(z.read("word/document.xml"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -193,11 +240,17 @@ if comments:
         info = comments[cid]
         loc  = comment_map.get(cid)
         loc_type = loc[0] if loc else "?"
-        loc_text = (loc[1][:100] + "…") if loc and len(loc[1]) > 100 else (loc[1] if loc else "(không map được)")
+        # Anchored text: đúng đoạn text bị comment (ưu tiên hơn paragraph text)
+        anchor = comment_anchor.get(cid, "")
+        # Paragraph context: cắt tối đa 200 ký tự là chấp nhận được
+        loc_text = (loc[1][:200] + "…") if loc and len(loc[1]) > 200 else (loc[1] if loc else "(không map được)")
+        # QUAN TRỌNG: body comment KHÔNG được cắt — phải in toàn bộ
         body = info["text"] or "[trống – có thể là placeholder]"
         print(f"[C{cid}] {info['author']} – {info['date']}")
-        print(f"  Vị trí ({loc_type}): \"{loc_text}\"")
-        print(f"  Nội dung: {body}")
+        if anchor:
+            print(f"  Comment về: \"{anchor}\"")       # ← text cụ thể bị comment
+        print(f"  Trong đoạn ({loc_type}): \"{loc_text}\"")
+        print(f"  Nội dung: {body}")  # ← toàn bộ text, không cắt
         print()
 
 # ── Strikethrough ─────────────────────────────────────────────────────────────
