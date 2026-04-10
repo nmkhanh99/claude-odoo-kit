@@ -49,3 +49,5 @@ Sau khi thống nhất từ → grep toàn BRD tìm tất cả chỗ dùng từ 
 | "nhóm quyền" / "role" | Loại vai trò (category) | Một user được gán vai trò | "nhóm quyền" cho category; "vai trò của [tên]" cho instance |
 
 **Ví dụ lỗi thực tế**: docx §2.1 Thủ kho ghi "06 danh mục kho" — nếu replace thành "14 kho chức năng" → sai nghĩa. Docx đang nói về 6 loại kho, không phải 14 kho vật lý.
+
+**Đã xác nhận (INV-01, 2026-04-10)**: "danh mục kho" ≠ "kho vật lý". SPS có **06 danh mục kho** (loại/nhóm) và **14 kho vật lý** (instance). Khi cần ghi cả hai → dùng: `"06 danh mục, 14 kho vật lý"`.
