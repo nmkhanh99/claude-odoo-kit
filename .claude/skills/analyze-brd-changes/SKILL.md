@@ -34,6 +34,60 @@ Xây cặp cho **mỗi** markup — không limit entries.
 - **TERMINOLOGY CHECK** bắt buộc: xác định nghĩa trong ngữ cảnh → xem `@references/terminology-guide.md`
 - **TABLE STRUCTURE DIFF** bắt buộc khi BRD có bảng: extract cấu trúc → so sánh cột/dòng → xem `@references/table-structure-diff.md`
 
+#### Bước 3b — TABLE MARKUP INVENTORY (bắt buộc cho mọi BRD có bảng)
+
+Trước khi phân tích từng entry, **nhóm toàn bộ markup theo bảng BRD** mà chúng xuất hiện:
+
+```
+1. Với MỖI bảng trong BRD (§1.2, §2.6, §3.x...):
+   a. Lấy danh sách heading/label của bảng đó (cột đầu tiên)
+   b. Grep ngữ cảnh (Ngữ cảnh / Trong đoạn) của TẤT CẢ Hx, Sx, Cx
+      → Tìm các entry có context khớp với nội dung bảng đó
+   c. Ghi bảng inventory:
+      | Bảng BRD | Row/Cột liên quan | Markup (Hx/Sx/Cx) | Nội dung markup | Đã áp dụng? |
+      | §1.2     | PLA/SAL           | H218              | "..."           | ❌           |
+
+2. Chỉ được bắt đầu edit BRD khi đã inventory ĐẦY ĐỦ tất cả bảng.
+3. Với mỗi entry trong inventory:
+   - Đọc nội dung markup TOÀN BỘ
+   - Phân tích: markup yêu cầu thay đổi gì trong row đó (thêm/sửa/xóa thông tin)
+   - Áp dụng thay đổi theo phân tích — KHÔNG bỏ sót, KHÔNG tóm tắt tùy tiện
+```
+
+**Dấu hiệu highlight thuộc table cell** (nhận biết từ output extract-docx-comments):
+- Ngữ cảnh chứa ký tự `|` hoặc text dạng "table cell"
+- Ngữ cảnh khớp với một dòng trong bảng BRD (label cột đầu)
+- Source ghi `(table)` thay vì `(paragraph)`
+
+#### Bước 3c — TO-BE STEP DIFF (bắt buộc khi BRD có section §2.1.x Quy trình mong muốn)
+
+Highlights trên numbered list TO-BE khác với highlight trên table cell — highlight chỉ đánh dấu **phần thay đổi** nhưng **toàn bộ paragraph** đều là nội dung cần có trong BRD.
+
+```
+1. Tập hợp tất cả Hx có source=(paragraph) và context khớp với §2.1 TO-BE:
+   - Nhận biết: context bắt đầu bằng động từ hành động ("ERP tự động sinh", "Nhân viên kho",
+     "Thủ kho xác nhận"...) hoặc là mục trong numbered list
+
+2. Với MỖI Hx trong nhóm TO-BE:
+   a. Đọc TOÀN BỘ "Ngữ cảnh" (không chỉ text highlight)
+   b. Tìm bước tương ứng trong BRD §2.1
+   c. So sánh FULL docx paragraph vs FULL BRD step — từng cụm từ
+   d. Ghi lệch:
+      | Hx  | Docx paragraph (full)  | BRD step hiện tại | Nội dung docx bị thiếu trong BRD |
+      | H226| "BP Giao hàng thực hiện giao hàng... Kết thúc..." | "Kết thúc xuất kho TP bán." | "BP Giao hàng thực hiện giao hàng theo đợt (lot giờ Samsung) và in Phiếu giao hàng chính thức từ hệ thống." |
+
+3. Với MỖI comment (Cx) có context nằm trong TO-BE step:
+   - Tách multi-point comment thành N điểm
+   - Map TỪNG điểm vào đúng bước BRD tương ứng (không nhất thiết cùng bước bị comment)
+   - Kiểm tra BRD có đủ cả N điểm không
+
+4. Chỉ đánh "Đã làm" khi TOÀN BỘ paragraph docx (không chỉ phần highlight) đã có trong BRD
+```
+
+**Anti-pattern "Partial Paragraph"** (lỗi phổ biến với TO-BE):
+- ❌ Docx step: "Câu A. **Câu B** (highlighted). Câu C." → BRD chỉ có "Câu B." → kết luận "Đã làm"
+- ✅ Đúng: phải kiểm tra cả Câu A và Câu C có trong BRD không
+
 ### Bước 4 — Tạo bảng phân tích (3 sheets)
 **CẦN SỬA** · **ĐÃ LÀM** · **OPEN QUESTIONS**  
 → Quy tắc trích dẫn nguồn, format JSON, ví dụ đúng/sai: `@references/sheet-formats.md`
